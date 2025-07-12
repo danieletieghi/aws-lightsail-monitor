@@ -1,0 +1,29 @@
+{
+  "instanceName": "my-lightsail-instance",
+  "region": "us-east-1",
+  "endpoints": [
+    {
+      "url": "https://example.com",
+      "name": "Main Website",
+      "timeout": 10000,
+      "expectedStatus": 200
+    },
+    {
+      "url": "https://api.example.com/health",
+      "name": "API Health Check",
+      "timeout": 5000,
+      "expectedStatus": 200
+    }
+  ],
+  "failureThreshold": 3,
+  "checkInterval": 5,
+  "cooldownMinutes": 30,
+  "notificationEmail": "alerts@example.com",
+  "logLevel": "info",
+  "costAllocationTag": "production-monitoring",
+  "customTags": {
+    "Environment": "production",
+    "Department": "DevOps",
+    "Project": "web-infrastructure"
+  }
+}

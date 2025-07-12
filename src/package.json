@@ -1,0 +1,13 @@
+{
+  "name": "lightsail-monitor-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function dependencies for AWS Lightsail Monitor",
+  "private": true,
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.511.0",
+    "@aws-sdk/client-lightsail": "^3.511.0",
+    "@aws-sdk/client-sns": "^3.511.0",
+    "@aws-sdk/lib-dynamodb": "^3.511.0",
+    "axios": "^1.6.7"
+  }
+}

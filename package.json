@@ -1,0 +1,42 @@
+{
+    "name": "aws-lightsail-monitor",
+    "version": "1.0.0",
+    "description": "Automated monitoring and recovery system for AWS Lightsail instances",
+    "main": "src/handlers/monitor.js",
+    "scripts": {
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "lint": "eslint src/ tests/",
+        "lint:fix": "eslint src/ tests/ --fix",
+        "deploy": "./deploy.sh",
+        "logs": "sam logs -n MonitorFunction --tail",
+        "test:local": "sam local invoke MonitorFunction"
+    },
+    "keywords": [
+        "aws",
+        "lightsail",
+        "monitoring",
+        "lambda",
+        "serverless",
+        "automation"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.511.0",
+        "@aws-sdk/client-lightsail": "^3.511.0",
+        "@aws-sdk/client-sns": "^3.511.0",
+        "@aws-sdk/lib-dynamodb": "^3.511.0",
+        "axios": "^1.6.7"
+    },
+    "devDependencies": {
+        "@types/jest": "^29.5.11",
+        "eslint": "^8.56.0",
+        "jest": "^29.7.0",
+        "aws-sdk-client-mock": "^3.0.1"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

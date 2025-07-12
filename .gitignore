@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+src/node_modules/
+package-lock.json
+src/package-lock.json
+yarn.lock
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+.sam/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Config files (except examples)
+config/config.json
+config/*.json
+!config/config.example.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Build outputs
+dist/
+build/
+out/
+.build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# AWS
+.aws/
+aws-exports.js
+
+# Local testing
+event.json
+response.json

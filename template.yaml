@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS Lightsail Monitor - Automated monitoring and recovery for Lightsail instances
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        LOG_LEVEL: !Ref LogLevel
+
+Parameters:
+  InstanceName:
+    Type: String
+    Description: Name of the Lightsail instance to monitor
+    
+  Endpoints:
+    Type: String
+    Description: JSON array of endpoints to monitor
+    Default: '[{"url":"https://example.com","name":"Main Site"}]'
+    MinLength: 2
+    MaxLength: 4096
+    
+  FailureThreshold:
+    Type: Number
+    Description: Number of consecutive failures before restart
+    Default: 3
+    MinValue: 1
+    MaxValue: 10
+    
+  CheckInterval:
+    Type: Number
+    Description: Minutes between health checks
+    Default: 5
+    MinValue: 1
+    MaxValue: 60
+    
+  CooldownMinutes:
+    Type: Number
+    Description: Minutes to wait before allowing another restart
+    Default: 30
+    MinValue: 5
+    MaxValue: 120
+    
+  NotificationEmail:
+    Type: String
+    Description: Email for notifications (optional)
+    Default: ''
+    
+  LogLevel:
+    Type: String
+    Description: Logging level
+    Default: info
+    AllowedValues:
+      - error
+      - warn
+      - info
+      - debug
+      
+  CostAllocationTag:
+    Type: String
+    Description: Tag for cost allocation and monitoring (e.g., project, department, environment)
+    Default: 'lightsail-monitor'
+    
+  CustomTags:
+    Type: String
+    Description: JSON object with custom tags to apply to all resources
+    Default: '{}'
+
+Conditions:
+  CreateNotificationTopic: !Not [!Equals [!Ref NotificationEmail, '']]
+
+Resources:
+  StateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-state'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: instanceName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: instanceName
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Application
+          Value: !Ref AWS::StackName
+        - Key: CostCenter
+          Value: !Ref CostAllocationTag
+        - Key: ManagedBy
+          Value: lightsail-monitor
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Condition: CreateNotificationTopic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-notifications'
+      DisplayName: Lightsail Monitor Notifications
+      Subscription:
+        - Endpoint: !Ref NotificationEmail
+          Protocol: email
+      Tags:
+        - Key: Application
+          Value: !Ref AWS::StackName
+        - Key: CostCenter
+          Value: !Ref CostAllocationTag
+        - Key: ManagedBy
+          Value: lightsail-monitor
+
+  MonitorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-monitor'
+      CodeUri: src/
+      Handler: handlers/monitor.handler
+      Environment:
+        Variables:
+          INSTANCE_NAME: !Ref InstanceName
+          ENDPOINTS: !Ref Endpoints
+          FAILURE_THRESHOLD: !Ref FailureThreshold
+          COOLDOWN_MINUTES: !Ref CooldownMinutes
+          STATE_TABLE_NAME: !Ref StateTable
+          SNS_TOPIC_ARN: !If 
+            - CreateNotificationTopic
+            - !Ref NotificationTopic
+            - ''
+      Events:
+        ScheduledCheck:
+          Type: Schedule
+          Properties:
+            Schedule: !Sub 'rate(${CheckInterval} minutes)'
+            Name: !Sub '${AWS::StackName}-schedule'
+            Description: Regular health check schedule
+            Enabled: true
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StateTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - lightsail:GetInstance
+              - lightsail:RebootInstance
+            Resource: '*'
+        - !If
+          - CreateNotificationTopic
+          - SNSPublishMessagePolicy:
+              TopicName: !GetAtt NotificationTopic.TopicName
+          - !Ref AWS::NoValue
+      Tags:
+        Application: !Ref AWS::StackName
+        CostCenter: !Ref CostAllocationTag
+        ManagedBy: lightsail-monitor
+
+  MonitorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${MonitorFunction}'
+      RetentionInDays: 7
+      Tags:
+        - Key: Application
+          Value: !Ref AWS::StackName
+        - Key: CostCenter
+          Value: !Ref CostAllocationTag
+        - Key: ManagedBy
+          Value: lightsail-monitor
+
+  MonitorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-function-errors'
+      AlarmDescription: Alert when monitor function has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref MonitorFunction
+      TreatMissingData: notBreaching
+      ActionsEnabled: !If [CreateNotificationTopic, true, false]
+      AlarmActions:
+        - !If
+          - CreateNotificationTopic
+          - !Ref NotificationTopic
+          - !Ref AWS::NoValue
+      Tags:
+        - Key: Application
+          Value: !Ref AWS::StackName
+        - Key: CostCenter
+          Value: !Ref CostAllocationTag
+        - Key: ManagedBy
+          Value: lightsail-monitor
+
+Outputs:
+  FunctionArn:
+    Description: ARN of the monitor Lambda function
+    Value: !GetAtt MonitorFunction.Arn
+    
+  StateTableName:
+    Description: Name of the DynamoDB state table
+    Value: !Ref StateTable
+    
+  NotificationTopicArn:
+    Condition: CreateNotificationTopic
+    Description: ARN of the SNS notification topic
+    Value: !Ref NotificationTopic
+    
+  ScheduleRule:
+    Description: Name of the CloudWatch Events rule
+    Value: !Sub '${AWS::StackName}-schedule'
