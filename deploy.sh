@@ -31,6 +31,8 @@ ENDPOINTS=$(echo $CONFIG | jq -c '.endpoints')
 FAILURE_THRESHOLD=$(echo $CONFIG | jq -r '.failureThreshold // 3')
 CHECK_INTERVAL=$(echo $CONFIG | jq -r '.checkInterval // 5')
 COOLDOWN_MINUTES=$(echo $CONFIG | jq -r '.cooldownMinutes // 30')
+CERT_WARN_DAYS=$(echo $CONFIG | jq -r '.certWarnDays // 21')
+ALERT_COOLDOWN_HOURS=$(echo $CONFIG | jq -r '.alertCooldownHours // 12')
 NOTIFICATION_EMAIL=$(echo $CONFIG | jq -r '.notificationEmail // empty')
 LOG_LEVEL=$(echo $CONFIG | jq -r '.logLevel // "info"')
 COST_ALLOCATION_TAG=$(echo $CONFIG | jq -r '.costAllocationTag // "lightsail-monitor"')
@@ -97,6 +99,8 @@ PARAMS="$PARAMS InstanceName=\"$INSTANCE_NAME\""
 PARAMS="$PARAMS FailureThreshold=\"$FAILURE_THRESHOLD\""
 PARAMS="$PARAMS CheckInterval=\"$CHECK_INTERVAL\""
 PARAMS="$PARAMS CooldownMinutes=\"$COOLDOWN_MINUTES\""
+PARAMS="$PARAMS CertWarnDays=\"$CERT_WARN_DAYS\""
+PARAMS="$PARAMS AlertCooldownHours=\"$ALERT_COOLDOWN_HOURS\""
 PARAMS="$PARAMS NotificationEmail=\"$NOTIFICATION_EMAIL\""
 PARAMS="$PARAMS LogLevel=\"$LOG_LEVEL\""
 PARAMS="$PARAMS CostAllocationTag=\"$COST_ALLOCATION_TAG\""

@@ -44,6 +44,20 @@ Parameters:
     MinValue: 5
     MaxValue: 120
     
+  CertWarnDays:
+    Type: Number
+    Description: Giorni di anticipo con cui avvisare della scadenza di un certificato TLS
+    Default: 21
+    MinValue: 1
+    MaxValue: 89
+
+  AlertCooldownHours:
+    Type: Number
+    Description: Ore minime fra due notifiche ripetute dello stesso tipo
+    Default: 12
+    MinValue: 1
+    MaxValue: 168
+
   NotificationEmail:
     Type: String
     Description: Email for notifications (optional)
@@ -124,6 +138,8 @@ Resources:
           ENDPOINTS: !Ref Endpoints
           FAILURE_THRESHOLD: !Ref FailureThreshold
           COOLDOWN_MINUTES: !Ref CooldownMinutes
+          CERT_WARN_DAYS: !Ref CertWarnDays
+          ALERT_COOLDOWN_HOURS: !Ref AlertCooldownHours
           STATE_TABLE_NAME: !Ref StateTable
           SNS_TOPIC_ARN: !If 
             - CreateNotificationTopic

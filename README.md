@@ -48,6 +48,24 @@ This project provides a serverless monitoring system that:
 - AWS SAM CLI (for deployment)
 - A Lightsail instance with one or more websites
 
+### AWS Profile Configuration
+
+If you have multiple AWS profiles configured (especially with AWS SSO), you need to specify the correct profile when deploying or uninstalling:
+
+```bash
+# Check your available profiles
+cat ~/.aws/credentials | grep -E '^\[.*\]'
+
+# Login to AWS SSO (if using SSO profiles)
+aws sso login --profile YOUR_PROFILE_NAME
+
+# Use the profile with deployment/uninstall scripts
+AWS_PROFILE=YOUR_PROFILE_NAME ./deploy.sh
+AWS_PROFILE=YOUR_PROFILE_NAME ./uninstall.sh
+```
+
+**Important:** Make sure to use the same AWS profile for both deployment and uninstallation to ensure the CloudFormation stack is found in the correct account/region.
+
 ## Quick Start
 
 1. Clone the repository:
@@ -71,6 +89,37 @@ cp config/config.example.json config/config.json
 ```bash
 npm run deploy
 ```
+
+## Restart Policy: what triggers a reboot
+
+The monitor restarts the instance **only when the VM is unreachable at the network
+level** (`ECONNREFUSED`, `ETIMEDOUT`, `EHOSTUNREACH` and similar). Any other kind of
+failure is reported but never triggers a restart:
+
+| Failure | Classification | Restart? |
+|---|---|---|
+| Connection refused / timeout / host unreachable | `unreachable` | Yes, after `failureThreshold` checks |
+| Expired or invalid TLS certificate | `tls` | No, notification only |
+| Unexpected HTTP status (4xx, 5xx) | `application` | No, notification only |
+
+The reasoning: if the server answers HTTP or presents a certificate, it is alive, and
+rebooting cannot fix a certificate or an application error. It only produces a reboot
+loop.
+
+This rule was added after an incident on 2026-08-30: the Let's Encrypt certificate
+expired, the `n8n` health check started failing with `CERT_HAS_EXPIRED`, and the
+monitor rebooted the production VM **51 times over 32 hours** without ever addressing
+the actual cause. See `docs/troubleshooting.md`.
+
+Notifications for non-restart failures are rate limited to one every
+`alertCooldownHours` (default 12) per failure type, so a persistent problem does not
+generate a mail every 5 minutes.
+
+## Certificate Expiry Monitoring
+
+At every run the monitor reads the TLS certificate of each HTTPS endpoint and sends a
+notification when one expires within `certWarnDays` (default 21). This surfaces a
+pending expiry weeks before it can break anything.
 
 ## Configuration
 
